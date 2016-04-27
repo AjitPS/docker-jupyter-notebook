@@ -43,12 +43,12 @@ ENV PATH /home/$NB_USER/.cabal/bin:/opt/cabal/1.22/bin:/opt/ghc/7.8.4/bin:/opt/h
 USER jovyan
 
 # Python packages
-RUN conda install --yes numpy pandas scikit-learn scikit-image matplotlib scipy seaborn sympy \
-    cython patsy statsmodels cloudpickle dill numba bokeh beautiful-soup && conda clean -yt && pip install --no-cache-dir bioblend
+RUN conda config --add channels r && conda install --yes numpy pandas scikit-learn scikit-image matplotlib scipy seaborn sympy rpy2 \
+    biopython cython patsy statsmodels cloudpickle dill numba bokeh beautiful-soup && conda clean -yt && pip install --no-cache-dir bioblend
 
 # Now for a python2 environment
-RUN conda create -p $CONDA_DIR/envs/python2 python=2.7 ipykernel numpy pandas scikit-learn \
-    scikit-image matplotlib scipy seaborn sympy cython patsy statsmodels cloudpickle dill numba bokeh && conda clean -yt && \
+RUN conda create -p $CONDA_DIR/envs/python2 python=2.7 ipykernel numpy pandas scikit-learn rpy2 \
+    biopython scikit-image matplotlib scipy seaborn sympy cython patsy statsmodels cloudpickle dill numba bokeh && conda clean -yt && \
     /bin/bash -c "source activate python2 && pip install --no-cache-dir bioblend"
 
 RUN $CONDA_DIR/envs/python2/bin/python \
@@ -78,10 +78,10 @@ RUN cabal update && \
 
 
 # Extra Kernels
-RUN pip install --user --no-cache-dir bash_kernel bioblend octave_kernel && \
-    python -m bash_kernel.install
-
-
+RUN pip install --user --no-cache-dir bash_kernel bioblend octave_kernel galaxy-ie-helpers && \
+    python -m bash_kernel.install && \
+    # add galaxy-ie-helpers to PATH
+    echo 'export PATH=/home/jovyan/.local/bin:$PATH' >> /home/jovyan/.bashrc 
 
 ADD ./startup.sh /startup.sh
 ADD ./monitor_traffic.sh /monitor_traffic.sh
@@ -115,15 +115,6 @@ COPY jupyter_notebook_config.py /home/$NB_USER/.jupyter/
 ADD ./custom.js /home/$NB_USER/.jupyter/custom/custom.js
 ADD ./custom.css /home/$NB_USER/.jupyter/custom/custom.css
 ADD ./default_notebook.ipynb /home/$NB_USER/notebook.ipynb
-
-# Add python module to a special folder for modules we want to be able to load within Jupyter
-RUN mkdir /home/$NB_USER/py/
-COPY ./galaxy.py /home/$NB_USER/py/galaxy.py
-COPY ./put /home/$NB_USER/py/put
-COPY ./get /home/$NB_USER/py/get
-# Make sure the system is aware that it can look for python code here
-ENV PYTHONPATH /home/$NB_USER/py/:$PYTHONPATH
-ENV PATH /home/$NB_USER/py/:$PATH
 
 # ENV variables to replace conf file
 ENV DEBUG=false \
